@@ -1,0 +1,15 @@
+# Ignore PyCharm IDE settings
+.idea/
+
+# Ignore compiled Python files
+__pycache__/
+*.pyc
+*.pyo
+
+# Ignore local environment variables
+.env
+
+# Ignore logs and database files
+*.log
+*.sqlite3
+*.db
