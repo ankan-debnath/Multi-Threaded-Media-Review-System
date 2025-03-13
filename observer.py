@@ -50,10 +50,10 @@ class Observer:
                     FOREIGN KEY (user_name) REFERENCES USERS(user_name),
                     PRIMARY KEY (media_id, user_name)
                 )''')
-            c.execute("SELECT media_type, media_name FROM MEDIAS WHERE media_id = ?", (media_id,))
+            c.execute('''SELECT media_type, media_name FROM MEDIAS WHERE media_id = ?''', (media_id,))
             media = c.fetchall()
             media_type, media_name = media[0] if media else None, None
-            c.execute("SELECT user_name FROM SUBSCRIBERS WHERE media_id = ?", (media_id,) )
+            c.execute('''SELECT user_name FROM SUBSCRIBERS WHERE media_id = ?''', (media_id,) )
             subscribers = c.fetchall()
 
             for subscriber in subscribers:

@@ -4,7 +4,7 @@ from rich.table import Table
 from rich.console import Console
 from dotenv import  load_dotenv
 
-from enum import Enum, nonmember
+from enum import Enum
 import db
 from observer import  Observer
 
@@ -37,6 +37,7 @@ class ReviewSystem:
         table.add_column("Title", style="magenta", justify="center")
         for media_id, media_type, title, _ in media_data:
             table.add_row(str(media_id), media_type, title)
+
         console.print(table)
 
     def print_top_medias(self, medias, category):
@@ -48,6 +49,20 @@ class ReviewSystem:
             table.add_row(media_name,str(rating))
         console.print(table)
 
+    def print_recommendations(self, recommendations, user ,category=""):
+        table = Table(title=f"Recommendations For {user} {('Category : ' + category) if category else ''}", title_style="bold cyan")
+        table.add_column("ID", style="cyan")
+        table.add_column("Name", style="magenta", justify="center")
+        table.add_column("Category", style="magenta", justify="center")
+        table.add_column("Average Rating", style="magenta", justify="center")
+        table.add_column("Recommendation Type", style="magenta", justify="center")
+
+        for media_id, media_name, media_type, avg_rating, recommendation_type in recommendations:
+            table.add_row(str(media_id), media_name, media_type, str(avg_rating), recommendation_type)
+
+        console.print(table)
+
+
     def list_media(self):
         try:
             with sqlite3.connect('media.db', check_same_thread=False) as conn:
@@ -58,19 +73,28 @@ class ReviewSystem:
         except sqlite3.DatabaseError as err:
             console.print(f"[red]Error:[/red] Database error. Message : {err}")
 
-    def submit_review(self, user_name, media_id, rating, comment):
+    def submit_review(self, user_name, media_cred, rating, comment):
         """Submit a review with styled output."""
         try:
+            media_id = int(media_cred) if media_cred.isdigit() else None
+            media_name = media_cred if not media_cred.isdigit() else None
+            rating = float(rating)
+
             with sqlite3.connect('media.db', check_same_thread=False) as conn:
-                media_id, rating = int(media_id), float(rating)
                 if not (1 <= rating <= 5):
                     console.print("[red]Error:[/red] Rating must be between 1 and 5.")
                     return
-                db.add_review(user_name, media_id, rating, comment, conn)
+
+                if media_id:
+                    db.add_review_with_media_id(user_name, media_id, rating, comment, conn)
+                if media_name:
+                    media_id = db.add_review_with_media_name(user_name, media_name, rating, comment, conn)
 
                 self.observer.notify(media_id, rating, comment, conn)
         except ValueError:
             console.print("[red]Error:[/red] Media ID must integer and Rating must be decimal value.")
+        except sqlite3.IntegrityError:
+            console.print(f"[red]Error:[/red] media_id or user_name is invalid ", )
         except sqlite3.OperationalError as err:
             console.print(f"[red]Error:[/red] Database error : {err}")
 
@@ -133,6 +157,29 @@ class ReviewSystem:
         except sqlite3.OperationalError as err:
             console.print(f"[red]Error:[/red] Database error : {err}")
 
+    def get_recommendation_with_category(self, user_name, category=""):
+        try:
+            with sqlite3.connect('media.db', check_same_thread=False) as conn:
+                media_type = MediaType[category.upper()].value if category else category
 
-    def get_recommendation(self):
+                recommendations = db.get_recommendations_from_review_data(user_name, media_type, conn)
+                recommendations += db.get_recommendations_from_subscriber_data(user_name, media_type, conn)
+
+                # Filtering the duplicate recommendations
+                seen = set()
+                final_recommendations = []
+                for media in recommendations:
+                    media_id = media[0]
+                    if media_id not in seen:
+                        final_recommendations.append(media)
+                        seen.add(media_id)
+
+                self.print_recommendations(final_recommendations, user_name, category)
+
+        except KeyError:
+            console.print("[red]Error:[/red] Media Type must be movie, song or web_show")
+        except sqlite3.OperationalError as err:
+            console.print(f"[red]Error:[/red] Database error : {err}")
+
+    def get_recommendation(self, user_name):
         pass
