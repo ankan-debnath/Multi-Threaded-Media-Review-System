@@ -21,6 +21,9 @@ if __name__ == "__main__":
     parser.add_argument("--subscribe", nargs=2, metavar=("USER_NAME", "MEDIA_ID",), help="Subscribe to particular media")
     parser.add_argument("--user", nargs=2, metavar=("USER_NAME", "ADMIN_PASSWORD",), help="Create User")
 
+    parser.add_argument("--multiple-review", nargs=1, metavar=("REVIEWS",),
+                        help="Submit a multiple reviews in format [ (USER_NAME, MEDIA_ID/MEDIA_NAME, RATING, COMMENT), ]\n Do not add any quotations in list")
+
     args = parser.parse_args()
 
     if args.list:
@@ -43,6 +46,9 @@ if __name__ == "__main__":
     elif args.review:
             user_name, media_cred, rating, comment = args.review
             review_system.submit_review(user_name, media_cred, rating, comment)
+    elif args.multiple_review:
+        reviews, = args.multiple_review
+        review_system.submit_multiple_reviews(reviews)
     elif args.search:
         title = args.search[0]
         review_system.search(title)

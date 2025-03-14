@@ -1,5 +1,8 @@
 import os
 import  sqlite3
+import threading
+from threading import Thread
+
 from rich.table import Table
 from rich.console import Console
 from dotenv import  load_dotenv
@@ -16,6 +19,8 @@ class MediaType(Enum):
 console = Console()
 load_dotenv()
 
+lock = threading.Lock()
+
 class ReviewSystem:
     def __init__(self):
         self.observer = Observer()
@@ -24,7 +29,7 @@ class ReviewSystem:
         table = Table(title=f"Title : {title}", title_style="bold cyan")
         table.add_column("user_name", style="cyan", justify="center")
         table.add_column("Rating", style="magenta")
-        table.add_column("Comment", style="magenta", justify="center")
+        table.add_column("Comment", style="magenta")
         for user_name, rating, comment in reviews:
             table.add_row(user_name, str(rating), comment)
         console.print(table)
@@ -34,7 +39,7 @@ class ReviewSystem:
         table = Table(title="Media List")
         table.add_column("ID", style="cyan", justify="center")
         table.add_column("Type", style="magenta")
-        table.add_column("Title", style="magenta", justify="center")
+        table.add_column("Title", style="magenta")
         for media_id, media_type, title, _ in media_data:
             table.add_row(str(media_id), media_type, title)
 
@@ -55,7 +60,7 @@ class ReviewSystem:
         table.add_column("Name", style="magenta", justify="center")
         table.add_column("Category", style="magenta", justify="center")
         table.add_column("Average Rating", style="magenta", justify="center")
-        table.add_column("Recommendation Type", style="magenta", justify="center")
+        table.add_column("Recommendation Type", style="magenta")
 
         for media_id, media_name, media_type, avg_rating, recommendation_type in recommendations:
             table.add_row(str(media_id), media_name, media_type, str(avg_rating), recommendation_type)
@@ -80,17 +85,19 @@ class ReviewSystem:
             media_name = media_cred if not media_cred.isdigit() else None
             rating = float(rating)
 
-            with sqlite3.connect('media.db', check_same_thread=False) as conn:
-                if not (1 <= rating <= 5):
-                    console.print("[red]Error:[/red] Rating must be between 1 and 5.")
-                    return
+            with lock:
+                with sqlite3.connect('media.db') as conn:
+                    if not (1 <= rating <= 5):
+                        console.print("[red]Error:[/red] Rating must be between 1 and 5.")
+                        return
 
-                if media_id:
-                    db.add_review_with_media_id(user_name, media_id, rating, comment, conn)
-                if media_name:
-                    media_id = db.add_review_with_media_name(user_name, media_name, rating, comment, conn)
+                    if media_id:
+                        db.add_review_with_media_id(user_name, media_id, rating, comment, conn)
+                    if media_name:
+                        media_id = db.add_review_with_media_name(user_name, media_name, rating, comment, conn)
 
-                self.observer.notify(media_id, rating, comment, conn)
+                    self.observer.notify(media_id, rating, comment, conn)
+
         except ValueError:
             console.print("[red]Error:[/red] Media ID must integer and Rating must be decimal value.")
         except sqlite3.IntegrityError:
@@ -121,6 +128,8 @@ class ReviewSystem:
             console.print("[red]Error:[/red] Media Type must be movie, song or web_show")
         except sqlite3.OperationalError as err:
             console.print(f"[red]Error:[/red] Database error : {err}")
+        except sqlite3.IntegrityError as err:
+            console.print(f"[red]Error:[/red] User is invalid or Media already exists : {err}")
 
     def subscribe_to_media(self, user_name, media_id):
         try:
@@ -150,7 +159,7 @@ class ReviewSystem:
                 category = MediaType[category.upper()].value
 
                 medias = db.get_top_rated_media(category, conn)
-                self.print_top_medias(medias[:5], category)
+                self.print_top_medias(medias, category)
 
         except KeyError:
             console.print("[red]Error:[/red] Category must be movie, song or web_show")
@@ -181,5 +190,36 @@ class ReviewSystem:
         except sqlite3.OperationalError as err:
             console.print(f"[red]Error:[/red] Database error : {err}")
 
-    def get_recommendation(self, user_name):
-        pass
+    def submit_multiple_reviews(self, reviews):
+        try:
+            reviews = reviews.replace(" ", "")
+            reviews = reviews.strip("[]()")
+            reviews = reviews.split("),(")
+
+            final_reviews = []
+
+            for item in reviews:
+                user_name, media_cred, rating, comment = item.split(",")
+                user_name = user_name.strip("'")
+                media_cred = media_cred.strip("'")
+                rating = rating.strip("'")
+                comment = comment.strip("'")
+                final_reviews.append(tuple([user_name, media_cred, rating, comment]))
+
+            # print(final_reviews)
+
+            review_threads = []
+
+            for review in final_reviews:
+                user_name, media_cred, rating, comment = review
+                thread = Thread(target=self.submit_review, args=(user_name, media_cred, rating, comment))
+                review_threads.append(thread)
+                thread.start()
+
+            for thread in review_threads:
+                thread.join()
+
+        except KeyError:
+            console.print("[red]Error:[/red] Media Type must be movie, song or web_show")
+        except InterruptedError as err:
+            console.print(f"[red]Error:[/red] Execution error : {err}")
