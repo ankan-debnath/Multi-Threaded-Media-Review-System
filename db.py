@@ -135,19 +135,6 @@ def get_recommendations_from_review_data(user_name, media_type, conn):
         WHERE m1.user_name != ? 
     '''
 
-    # print(c.execute('''SELECT media_id, ROUND(AVG(rating), 2) as avg_rating
-    #         FROM REVIEWS
-    #         WHERE user_name IN (
-    #             SELECT DISTINCT user_name
-    #             from REVIEWS
-    #             WHERE media_id in (
-    #                 SELECT DISTINCT(media_id) FROM REVIEWS WHERE user_name = ?  and rating >= 3
-    #             ) and user_name != ?
-    #         ) and rating >= 3.5
-    #         GROUP BY media_id
-    #         ORDER BY RANDOM()
-    #         LIMIT 10''', (user_name, user_name)).fetchall())
-
     params = [user_name, user_name, user_name, user_name]
 
     if media_type:
@@ -220,24 +207,6 @@ def get_recommendations_from_subscriber_data(user_name, media_type, conn):
     c.execute(query, params)
     recommendations = c.fetchall()
 
-    # print(c.execute('''SELECT media_id, ROUND(AVG(rating), 2) as avg_rating
-    #         FROM REVIEWS
-    #         WHERE user_name in (
-    #             SELECT DISTINCT user_name
-    #             FROM SUBSCRIBERS
-    #             WHERE media_id in (
-    #                 SELECT media_id
-    #                 FROM SUBSCRIBERS
-    #                 WHERE user_name = ?
-    #             )
-    #             and user_name != ?
-    #         )
-    #         and media_id not in ( SELECT DISTINCT(media_id) FROM REVIEWS WHERE user_name = ?  and rating >= 3)
-    #         and media_id not in ( SELECT media_id FROM SUBSCRIBERS WHERE user_name = ? )
-    #         and rating >= 3.5
-    #         GROUP BY media_id''', (user_name, user_name, user_name, user_name)).fetchall())
-
-    print(user_name)
     conn.commit()
     return recommendations
 
@@ -320,3 +289,39 @@ def add_media(user_name, media_type, media_name, conn):
         )
         c.execute('''INSERT INTO MEDIAS(media_type, media_name, user_name) VALUES(?, ?, ?)''', (media_type, media_name, user_name))
         conn.commit()
+
+def get_all_subscribers(media_id, conn):
+    c = conn.cursor()
+    c.execute('''SELECT user_name FROM SUBSCRIBERS WHERE media_id = ?''', (media_id,))
+    subscribers = c.fetchall()
+    conn.commit()
+    return subscribers
+
+def get_medias(media_id, conn):
+    c = conn.cursor()
+    c.execute(
+        '''CREATE TABLE IF NOT EXISTS SUBSCRIBERS(
+            media_id INTEGER,
+            user_name TEXT,
+            FOREIGN KEY (media_id) REFERENCES MEDIAS(media_id),
+            FOREIGN KEY (user_name) REFERENCES USERS(user_name),
+            PRIMARY KEY (media_id, user_name)
+        )''')
+    c.execute('''SELECT media_type, media_name FROM MEDIAS WHERE media_id = ?''', (media_id,))
+    media = c.fetchall()
+    conn.commit()
+    return media
+
+def subscribe_to_media(user_name, media_id, conn):
+    conn.execute('PRAGMA foreign_keys = ON;')
+    c = conn.cursor()
+    c.execute(
+        '''CREATE TABLE IF NOT EXISTS SUBSCRIBERS(
+            media_id INTEGER,
+            user_name TEXT,
+            FOREIGN KEY (media_id) REFERENCES MEDIAS(media_id),
+            FOREIGN KEY (user_name) REFERENCES USERS(user_name),
+            PRIMARY KEY (media_id, user_name)
+        )''')
+
+    c.execute("INSERT INTO SUBSCRIBERS VALUES(?, ?)", (media_id, user_name))

@@ -7,9 +7,10 @@ __pycache__/
 *.pyo
 
 # Ignore local environment variables
-.env
+#.env  # enabled for demo
 
 # Ignore logs and database files
 *.log
 *.sqlite3
-*.db
+media1.db
+#*.db
