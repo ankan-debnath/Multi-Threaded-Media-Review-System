@@ -74,6 +74,7 @@ class ReviewSystem:
 
         console.print(table)
 
+
     def list_media(self):
         try:
             cache_key = "media_list"
@@ -123,7 +124,7 @@ class ReviewSystem:
                     if redis_client.get(f"top_rated_{category}"):
                         redis_client.delete(f"top_rated_{category}")
 
-            asyncio.run(self.observer.notify(media_id, rating, comment, conn))  # notification set to users asynchronously
+            asyncio.run(self.observer.notify(media_id, rating, comment, conn))  # send notification to users asynchronously
 
         except ValueError:
             console.print("[red]Error:[/red] Media ID must integer and Rating must be decimal value.")
@@ -145,16 +146,17 @@ class ReviewSystem:
         except sqlite3.OperationalError as e:
             console.print("[red]Error:[/red] DB Error", e)
 
-    def add_media(self, user_name, media_type, media_name):
+    def add_media(self, media):
         try:
+            user_name, media_type, media_name = media.get_user_name(), media.get_media_type(), media.get_name()
             with sqlite3.connect('media.db', check_same_thread=False) as conn:
-                user_name, media_type, media_name = user_name, MediaType[media_type.upper()].value, media_name
+                user_name, media_type, media_name = user_name, media_type, media_name
 
                 db.add_media(user_name, media_type, media_name, conn)
                 redis_client.delete("media_list")                       #invalidating the cache
 
                 console.print(f"[green]Media added \nType : {media_type}, \nName : {media_name}[/green]", style='cyan')
-        except KeyError:
+        except (KeyError, AttributeError):
             console.print("[red]Error:[/red] Media Type must be movie, song or web_show")
         except sqlite3.OperationalError as err:
             console.print(f"[red]Error:[/red] Database error : {err}")

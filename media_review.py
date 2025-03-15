@@ -1,5 +1,6 @@
 import argparse
 
+from Medias import MediaFactory
 from review_system import ReviewSystem
 
 review_system = ReviewSystem()
@@ -37,8 +38,8 @@ if __name__ == "__main__":
         user_name, media_id = args.subscribe
         review_system.subscribe_to_media(user_name, media_id)
     elif args.add_media:
-        user_name, media_type, media_name = args.add_media
-        review_system.add_media(user_name, media_type, media_name)
+        media = MediaFactory.create_media(*args.add_media)
+        review_system.add_media(media)
 
     elif args.review:
             user_name, media_cred, rating, comment = args.review
