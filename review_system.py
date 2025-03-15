@@ -8,6 +8,7 @@ from rich.table import Table
 from rich.console import Console
 from dotenv import  load_dotenv
 import  json
+import asyncio
 
 from enum import Enum
 import db
@@ -112,13 +113,17 @@ class ReviewSystem:
                     if media_name:
                         media_id = db.add_review_with_media_name(user_name, media_name, rating, comment, conn)
 
-                    # cache invalidation operations
+                # cache invalidation operations
+                if media_id and redis_client.get(media_id):
                     redis_client.delete(media_id)
+                if media_name and redis_client.get(media_name):
                     redis_client.delete(media_name)
-                    for category in ("movie", "song", "web_show"):
+
+                for category in ("movie", "song", "web_show"):
+                    if redis_client.get(f"top_rated_{category}"):
                         redis_client.delete(f"top_rated_{category}")
 
-                self.observer.notify(media_id, rating, comment, conn)
+            asyncio.run(self.observer.notify(media_id, rating, comment, conn))  # notification set to users asynchronously
 
         except ValueError:
             console.print("[red]Error:[/red] Media ID must integer and Rating must be decimal value.")
@@ -126,7 +131,7 @@ class ReviewSystem:
             console.print(f"[red]Error:[/red] media_id or user_name is invalid ", )
         except sqlite3.OperationalError as err:
             console.print(f"[red]Error:[/red] Database error : {err}")
-        except redis.ConnectionError as err:
+        except redis.exceptions.RedisError as err:
             console.print(f"[red]Error:[/red] Redis Cache error. Message : {err}")
 
     def create_user(self, user_name, password):
@@ -165,6 +170,8 @@ class ReviewSystem:
 
         except ValueError as err:
             console.print(f"[red]Error:[/red] Failed to subscribe, media_id must be integer \nMessage : {err}")
+        except sqlite3.IntegrityError as err:
+            console.print(f"[red]Error:[/red] media_id or user does not exist or user already subscribed: {err}", )
         except sqlite3.OperationalError as err:
             console.print(f"[red]Error:[/red] Failed to subscribe. Message : {err}")
 

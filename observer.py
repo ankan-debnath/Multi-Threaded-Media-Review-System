@@ -1,67 +1,57 @@
 import sqlite3
+
 from rich.console import  Console
-from rich.panel import Panel
+import asyncio
+import logging
+
+import db
+
+logging.basicConfig(
+    filename="notifications.log",
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
 
 console = Console()
 
 class Observer:
 
-    def notify_subscriber(self, user_name, media_title, media_type, rating, comment):
+    async def notify_subscriber(self, user_name, media_title, media_type, rating, comment):
         message = (
-            f"[bold cyan]📢 New Review Alert![/bold cyan]\n"
-            f"[green]Media:[/green] {media_title}\n"
-            f"[green]Type:[/green] {media_type}\n"
-            f"[yellow]Rating:[/yellow] ⭐ {rating}/5\n"
-            f"[blue]Comment:[/blue] {comment}\n"
-            f"[magenta]Hey {user_name}, check it out![/magenta]"
+            f" New Review Alert!\n"
+            f"Media: {media_title}\n"
+            f"Type: {media_type}\n"
+            f"Rating:  {rating}/5\n"
+            f"Comment: {comment}\n"
+            f"Hey {user_name}, check it out!\n"
         )
 
-        console.print(Panel(message, title="[bold red]Notification[/bold red]", expand=False))
+        # await asyncio.sleep(10)     # simulating the delay for notifications
+        logging.info(message)
 
     def subscribe(self, user_name, media_id, conn):
-        conn.execute('PRAGMA foreign_keys = ON;')
-        c = conn.cursor()
-        c.execute(
-            '''CREATE TABLE IF NOT EXISTS SUBSCRIBERS(
-                media_id INTEGER,
-                user_name TEXT,
-                FOREIGN KEY (media_id) REFERENCES MEDIAS(media_id),
-                FOREIGN KEY (user_name) REFERENCES USERS(user_name),
-                PRIMARY KEY (media_id, user_name)
-            )''')
+        db.subscribe_to_media(user_name, media_id, conn)
+        console.print(f"[green]{user_name} added as subscriber to media id : {media_id} ", style='cyan')
 
-        try:
-            c.execute("INSERT INTO SUBSCRIBERS VALUES(?, ?)", (media_id, user_name))
-            console.print(f"[green]{user_name} added as subscriber to media id : {media_id} ", style='cyan')
-
-        except sqlite3.IntegrityError as err:
-            console.print(f"[red]Error:[/red] media_id or user does not exist or user already subscribed: {err}", )
-
-    def notify(self, media_id, rating, comment, conn):
+    async def notify(self, media_id, rating, comment, conn):
         conn.execute('PRAGMA foreign_keys = ON;')
         c = conn.cursor()
 
         try:
-            c.execute(
-                '''CREATE TABLE IF NOT EXISTS SUBSCRIBERS(
-                    media_id INTEGER,
-                    user_name TEXT,
-                    FOREIGN KEY (media_id) REFERENCES MEDIAS(media_id),
-                    FOREIGN KEY (user_name) REFERENCES USERS(user_name),
-                    PRIMARY KEY (media_id, user_name)
-                )''')
-            c.execute('''SELECT media_type, media_name FROM MEDIAS WHERE media_id = ?''', (media_id,))
-            media = c.fetchall()
+            media = db.get_medias(media_id, conn)
             media_type, media_name = media[0] if media else (None, None)
-            c.execute('''SELECT user_name FROM SUBSCRIBERS WHERE media_id = ?''', (media_id,) )
-            subscribers = c.fetchall()
+            subscribers = db.get_all_subscribers(media_id, conn)
 
             for subscriber in subscribers:
-                self.notify_subscriber(subscriber[0], media_name, media_type, rating, comment)
+                async with asyncio.TaskGroup() as tg:
+                    tg.create_task(self.notify_subscriber(subscriber[0], media_name, media_type, rating, comment))
 
         except sqlite3.IntegrityError as err:
             console.print(f"[red]Error:[/red] media_id or user does not exist : {err}", )
         except sqlite3.OperationalError as err:
             console.print(f"[red]Error:[/red] Database error : {err}", )
+        except InterruptedError as err:
+            logging.ERROR("Notification error")
 
         conn.commit()

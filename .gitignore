@@ -12,4 +12,5 @@ __pycache__/
 # Ignore logs and database files
 *.log
 *.sqlite3
-*.db
+media1.db
+#*.db
