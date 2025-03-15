@@ -1,9 +1,6 @@
 import argparse
 
-from unicodedata import category
-
 from review_system import ReviewSystem
-
 
 review_system = ReviewSystem()
 
