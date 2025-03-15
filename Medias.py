@@ -6,12 +6,14 @@ class Media(ABC):
         pass
     def get_name(self):
         pass
-    # def __str__(self):
-    #     return f"{self.get_media_type()}, {self.get_name()}"
 
 class Movie(Media):
-    def __init__(self, name):
+    def __init__(self, user_name, name):
         self.name = name
+        self.user_name = name
+
+    def get_user_name(self):
+        return self.user_name
 
     def get_media_type(self):
         return "movie"
@@ -20,18 +22,26 @@ class Movie(Media):
         return self.name
 
 class WebShow(Media):
-    def __init__(self, name):
+    def __init__(self, user_name, name):
         self.name = name
+        self.user_name = name
+
+    def get_user_name(self):
+        return self.user_name
 
     def get_media_type(self):
-        return "web show"
+        return "web_show"
 
     def get_name(self):
         return self.name
 
 class Song(Media):
-    def __init__(self, name):
+    def __init__(self, user_name, name):
         self.name = name
+        self.user_name = name
+
+    def get_user_name(self):
+        return self.user_name
 
     def get_media_type(self):
         return "song"
@@ -41,6 +51,10 @@ class Song(Media):
 
 class MediaFactory:
     @staticmethod
-    def create_media(media_type, name):
-        medias = { "movie" : Movie, "song" : Song, "web show" : WebShow }
-        return medias[media_type.lower()](name) if media_type.lower() in medias else None
+    def create_media(user_name, media_type, name):
+        medias = { "movie" : Movie, "song" : Song, "web_show" : WebShow }
+        return medias[media_type](user_name, name)
+
+    @staticmethod
+    def save_media(media):
+        media.save()
