@@ -292,6 +292,15 @@ def add_media(user_name, media_type, media_name, conn):
 
 def get_all_subscribers(media_id, conn):
     c = conn.cursor()
+    c.execute(
+        '''CREATE TABLE IF NOT EXISTS SUBSCRIBERS(
+            media_id INTEGER,
+            user_name TEXT,
+            FOREIGN KEY (media_id) REFERENCES MEDIAS(media_id),
+            FOREIGN KEY (user_name) REFERENCES USERS(user_name),
+            PRIMARY KEY (media_id, user_name)
+        )''')
+
     c.execute('''SELECT user_name FROM SUBSCRIBERS WHERE media_id = ?''', (media_id,))
     subscribers = c.fetchall()
     conn.commit()
@@ -325,3 +334,77 @@ def subscribe_to_media(user_name, media_id, conn):
         )''')
 
     c.execute("INSERT INTO SUBSCRIBERS VALUES(?, ?)", (media_id, user_name))
+
+def get_media_type(media_id, conn):
+    conn.execute('PRAGMA foreign_keys = ON;')
+    c = conn.cursor()
+    c.execute(
+        '''CREATE TABLE IF NOT EXISTS MEDIAS(
+            media_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            media_type TEXT,
+            media_name TEXT UNIQUE,
+            user_name TEXT,
+            FOREIGN KEY (user_name) REFERENCES USERS(user_name)
+        )'''
+    )
+    c.execute("SELECT media_type from MEDIAS WHERE media_id = ? ", (media_id,))
+
+    media_type = c.fetchall()[0][0]
+    conn.commit()
+    return media_type
+
+def is_available(user_name, conn):
+    conn.execute('PRAGMA foreign_keys = ON;')
+    c = conn.cursor()
+    c.execute(
+        '''CREATE TABLE IF NOT EXISTS MEDIAS(
+            media_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            media_type TEXT,
+            media_name TEXT UNIQUE,
+            user_name TEXT,
+            FOREIGN KEY (user_name) REFERENCES USERS(user_name)
+        )'''
+    )
+    c.execute("SELECT user_name FROM MEDIAS WHERE user_name = ?", (user_name,))
+    user_name = c.fetchall()
+    conn.commit()
+    return user_name
+
+def is_subscribed(user_name, media_id, conn):
+    conn.execute('PRAGMA foreign_keys = ON;')
+    c = conn.cursor()
+    c.execute(
+        '''CREATE TABLE IF NOT EXISTS SUBSCRIBERS(
+            media_id INTEGER,
+            user_name TEXT,
+            FOREIGN KEY (media_id) REFERENCES MEDIAS(media_id),
+            FOREIGN KEY (user_name) REFERENCES USERS(user_name),
+            PRIMARY KEY (media_id, user_name)
+        )''')
+
+    c.execute("SELECT user_name, media_id FROM SUBSCRIBERS WHERE user_name = ? and media_id = ? ", (user_name, media_id))
+    sub_data = c.fetchall()
+    conn.commit()
+    return sub_data
+
+def is_media_available(media_cred, conn):
+    conn.execute('PRAGMA foreign_keys = ON;')
+    c = conn.cursor()
+    c.execute(
+        '''CREATE TABLE IF NOT EXISTS MEDIAS(
+            media_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            media_type TEXT,
+            media_name TEXT UNIQUE,
+            user_name TEXT,
+            FOREIGN KEY (user_name) REFERENCES USERS(user_name)
+        )'''
+    )
+    if media_cred.isdigit():
+        c.execute("SELECT media_id from MEDIAS WHERE media_id = ? ", (media_cred,))
+    else:
+        c.execute("SELECT media_id from MEDIAS WHERE LOWER(media_name) = LOWER(?)", (media_cred,))
+
+    result = c.fetchall()
+    conn.commit()
+
+    return result[0][0] if result else None
