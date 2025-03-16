@@ -20,7 +20,14 @@ The Media Review System is a CLI-based application that allows users to review a
    pip install pipenv
    pipenv install
    ```
-3. Run the application:
+3. Install Redis  
+   [Download Redis](https://github.com/tporadowski/redis/releases) and follow the installation instructions for your operating system.  
+
+   Start the Redis server:  
+   ```sh
+   redis-server --port 6379
+
+4. Run the application:
    ```sh
    python media_review.py --help
    ```
