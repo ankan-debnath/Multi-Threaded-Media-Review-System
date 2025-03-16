@@ -61,7 +61,7 @@ python media_review.py --top-rated movie/song/web_show
 python media_review.py --recommend alice movie/song/web_show
 python media_review.py --subscribe alice 101
 python media_review.py --user alice 1234(default admin password)
-python media_review.py --multiple-review "[('Alice', 101, 5, 'Great!'), ('Bob', 102, 4, 'Nice!')]"
+python media_review.py --multiple-review "[('Alice', 101, 5, 'Great!'), ('Bob', 'Titanic', 4.5, 'Nice!')]"
 ```
 
 ## Support
