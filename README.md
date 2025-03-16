@@ -39,17 +39,17 @@ python media_review.py --help
 ```
 
 ### Available Commands
-| Command | Description |
-|---------|-------------|
-| `--list` | List all media available in the system. |
+| Command                                                 | Description |
+|---------------------------------------------------------|-------------|
+| `--list`                                                | List all media available in the system. |
 | `--review USER_NAME MEDIA_ID/MEDIA_NAME RATING COMMENT` | Submit a review for a media item. |
-| `--add-media USER_NAME MEDIA_TYPE MEDIA_NAME` | Add new media (Movie, Web Show, or Song). |
-| `--search TITLE` | Search for media by title. |
-| `--top-rated CATEGORY` | Retrieve top-rated media in a category. |
-| `--recommend USER_ID [CATEGORY ...]` | Get media recommendations for a user. |
-| `--subscribe USER_NAME MEDIA_ID` | Subscribe to a media item for updates. |
-| `--user USER_NAME ADMIN_PASSWORD` | Create a new user with the given username and password. |
-| `--multiple-review REVIEWS` | Submit multiple reviews in bulk format. |
+| `--add-media USER_NAME MEDIA_TYPE MEDIA_NAME`           | Add new media (Movie, Web Show, or Song). |
+| `--search TITLE`                                        | Search for media by title. |
+| `--top-rated CATEGORY`                                  | Retrieve top-rated media in a category. |
+| `--recommend USER_ID [CATEGORY ...]`                    | Get media recommendations for a user. |
+| `--subscribe USER_NAME MEDIA_ID/MEDIA_NAME`             | Subscribe to a media item for updates. |
+| `--user USER_NAME ADMIN_PASSWORD`                       | Create a new user with the given username and password. |
+| `--multiple-review REVIEWS`                             | Submit multiple reviews in bulk format. |
 
 ### Examples
 ```sh
