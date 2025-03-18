@@ -13,7 +13,7 @@ import asyncio
 from enum import Enum
 import db
 from observer import  Observer
-from redis_db import redis_client
+from redis_db import redis_client, is_redis_available
 
 class MediaType(Enum):
     MOVIE = "movie"
@@ -23,11 +23,7 @@ class MediaType(Enum):
 console = Console()
 load_dotenv()
 
-try:
-    redis_available = redis_client.ping()
-except redis.ConnectionError:
-    redis_available = False
-    console.print(f"[yellow]Warning : [/yellow] Redis Cache not available. Data will be only fetched from DB : ")
+redis_available = is_redis_available(redis_client)
 
 lock = threading.Lock()
 
@@ -36,6 +32,11 @@ CACHE_EXPIRY = 1800     # cache is invalidated automatically after 30 minutes
 class ReviewSystem:
     def __init__(self):
         self.observer = Observer()
+        try:
+            with sqlite3.connect('media.db', check_same_thread=False) as conn:
+                db.create_all_db_tables(conn)
+        except sqlite3.DatabaseError as err:
+            console.print(f"[red]Error:[/red] Database error. Message : {err}")
 
     def print_reviews(self, reviews, title):
         table = Table(title=f"Title : {title}", title_style="bold cyan")

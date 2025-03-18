@@ -6,15 +6,6 @@ console = Console()
 def get_all_media(conn):
     conn.execute('PRAGMA foreign_keys = ON;')
     c = conn.cursor()
-    c.execute(
-        '''CREATE TABLE IF NOT EXISTS MEDIAS(
-            media_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            media_type TEXT,
-            media_name TEXT UNIQUE,
-            user_name TEXT,
-            FOREIGN KEY (user_name) REFERENCES USERS(user_name)
-        )'''
-    )
     c.execute("SELECT * FROM MEDIAS ORDER BY media_type, media_name")
     conn.commit()
     return c.fetchall()
@@ -22,21 +13,6 @@ def get_all_media(conn):
 def add_review_with_media_id(user_name, media_id, rating, comment, conn):
     conn.execute('PRAGMA foreign_keys = ON;')
     c = conn.cursor()
-    c.execute('''
-            CREATE TABLE IF NOT EXISTS USERS(
-                user_name TEXT UNIQUE
-            )
-        ''')
-    c.execute(
-        '''CREATE TABLE IF NOT EXISTS REVIEWS(
-            user_name TEXT,
-            media_id INTEGER,
-            rating REAL,
-            comment TEXT,
-            FOREIGN KEY (media_id) REFERENCES MEDIAS(media_id)
-            FOREIGN KEY (user_name) REFERENCES USERS(user_name)
-        )'''
-    )
     c.execute('''INSERT INTO REVIEWS VALUES(?, ?, ?, ?)''', (user_name, media_id, rating, comment))
     conn.commit()
     console.print(f"[green]Review added by \nUser : {user_name}\nMedia : {media_id}, Rating : {rating},\nComment : {comment}[/green]", style='cyan')
@@ -44,25 +20,6 @@ def add_review_with_media_id(user_name, media_id, rating, comment, conn):
 def add_review_with_media_name(user_name, media_name, rating, comment, conn):
     conn.execute('PRAGMA foreign_keys = ON;')
     c = conn.cursor()
-    c.execute(
-        '''CREATE TABLE IF NOT EXISTS REVIEWS(
-            user_name TEXT,
-            media_id INTEGER,
-            rating REAL,
-            comment TEXT,
-            FOREIGN KEY (media_id) REFERENCES MEDIAS(media_id)
-            FOREIGN KEY (user_name) REFERENCES USERS(user_name)
-        )'''
-    )
-    c.execute(
-        '''CREATE TABLE IF NOT EXISTS MEDIAS(
-            media_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            media_type TEXT,
-            media_name TEXT UNIQUE,
-            user_name TEXT,
-            FOREIGN KEY (user_name) REFERENCES USERS(user_name)
-        )'''
-    )
 
     c.execute('''SELECT media_id FROM MEDIAS WHERE LOWER(media_name) = LOWER(?)''', (media_name,))
 
@@ -80,11 +37,6 @@ def add_review_with_media_name(user_name, media_name, rating, comment, conn):
 
 def create_user(user_name, conn):
     c = conn.cursor()
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS USERS(
-            user_name TEXT UNIQUE
-        )
-    ''')
     try:
         c.execute('''INSERT INTO USERS(user_name) VALUES(?)''', (user_name,))
         console.print(f"[green]User created with user_name : {user_name}[/green]", style='cyan')
@@ -94,25 +46,6 @@ def create_user(user_name, conn):
 def get_recommendations_from_review_data(user_name, media_type, conn):
     conn.execute('PRAGMA foreign_keys = ON;')
     c = conn.cursor()
-    c.execute(
-        '''CREATE TABLE IF NOT EXISTS REVIEWS(
-            user_name TEXT,
-            media_id INTEGER,
-            rating REAL,
-            comment TEXT,
-            FOREIGN KEY (media_id) REFERENCES MEDIAS(media_id)
-            FOREIGN KEY (user_name) REFERENCES USERS(user_name)
-        )'''
-    )
-    c.execute(
-        '''CREATE TABLE IF NOT EXISTS MEDIAS(
-            media_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            media_type TEXT,
-            media_name TEXT UNIQUE,
-            user_name TEXT,
-            FOREIGN KEY (user_name) REFERENCES USERS(user_name)
-        )'''
-    )
 
     #Getting recommendations from review data
     query = '''
@@ -152,25 +85,6 @@ def get_recommendations_from_review_data(user_name, media_type, conn):
 def get_recommendations_from_subscriber_data(user_name, media_type, conn):
     conn.execute('PRAGMA foreign_keys = ON;')
     c = conn.cursor()
-    c.execute(
-        '''CREATE TABLE IF NOT EXISTS REVIEWS(
-            user_name TEXT,
-            media_id INTEGER,
-            rating REAL,
-            comment TEXT,
-            FOREIGN KEY (media_id) REFERENCES MEDIAS(media_id)
-            FOREIGN KEY (user_name) REFERENCES USERS(user_name)
-        )'''
-    )
-    c.execute(
-        '''CREATE TABLE IF NOT EXISTS MEDIAS(
-            media_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            media_type TEXT,
-            media_name TEXT UNIQUE,
-            user_name TEXT,
-            FOREIGN KEY (user_name) REFERENCES USERS(user_name)
-        )'''
-    )
 
     query = '''
         SELECT m1.media_id, m1.media_name, m1.media_type, m2.avg_rating, "From subscription data"
@@ -213,25 +127,6 @@ def get_recommendations_from_subscriber_data(user_name, media_type, conn):
 def get_reviews_by_title(title, conn):
     conn.execute('PRAGMA foreign_keys = ON;')
     c = conn.cursor()
-    c.execute(
-        '''CREATE TABLE IF NOT EXISTS MEDIAS(
-            media_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            media_type TEXT,
-            media_name TEXT UNIQUE,
-            user_name TEXT,
-            FOREIGN KEY (user_name) REFERENCES USERS(user_name)
-        )'''
-    )
-    c.execute(
-        '''CREATE TABLE IF NOT EXISTS REVIEWS(
-            user_name TEXT,
-            media_id INTEGER,
-            rating REAL,
-            comment TEXT,
-            FOREIGN KEY (media_id) REFERENCES MEDIAS(media_id)
-            FOREIGN KEY (user_name) REFERENCES USERS(user_name)
-        )'''
-    )
     c.execute('''
             SELECT R.user_name, R.rating, R.comment
             FROM MEDIAS AS M JOIN REVIEWS AS R
@@ -244,25 +139,6 @@ def get_reviews_by_title(title, conn):
 def get_top_rated_media(category, conn):
     conn.execute('PRAGMA foreign_keys = ON;')
     c = conn.cursor()
-    c.execute(
-        '''CREATE TABLE IF NOT EXISTS MEDIAS(
-            media_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            media_type TEXT,
-            media_name TEXT UNIQUE,
-            user_name TEXT,
-            FOREIGN KEY (user_name) REFERENCES USERS(user_name)
-        )'''
-    )
-    c.execute(
-        '''CREATE TABLE IF NOT EXISTS REVIEWS(
-            user_name TEXT,
-            media_id INTEGER,
-            rating REAL,
-            comment TEXT,
-            FOREIGN KEY (media_id) REFERENCES MEDIAS(media_id)
-            FOREIGN KEY (user_name) REFERENCES USERS(user_name)
-        )'''
-    )
     c.execute('''
                 SELECT M.media_name, ROUND(AVG(R.rating), 2) as avg_rating
                 FROM MEDIAS AS M JOIN REVIEWS AS R
@@ -278,28 +154,11 @@ def get_top_rated_media(category, conn):
 def add_media(user_name, media_type, media_name, conn):
         conn.execute('PRAGMA foreign_keys = ON;')
         c = conn.cursor()
-        c.execute(
-            '''CREATE TABLE IF NOT EXISTS MEDIAS(
-                media_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                media_type TEXT,
-                media_name TEXT UNIQUE,
-                user_name TEXT,
-                FOREIGN KEY (user_name) REFERENCES USERS(user_name)
-            )'''
-        )
         c.execute('''INSERT INTO MEDIAS(media_type, media_name, user_name) VALUES(?, ?, ?)''', (media_type, media_name, user_name))
         conn.commit()
 
 def get_all_subscribers(media_id, conn):
     c = conn.cursor()
-    c.execute(
-        '''CREATE TABLE IF NOT EXISTS SUBSCRIBERS(
-            media_id INTEGER,
-            user_name TEXT,
-            FOREIGN KEY (media_id) REFERENCES MEDIAS(media_id),
-            FOREIGN KEY (user_name) REFERENCES USERS(user_name),
-            PRIMARY KEY (media_id, user_name)
-        )''')
 
     c.execute('''SELECT user_name FROM SUBSCRIBERS WHERE media_id = ?''', (media_id,))
     subscribers = c.fetchall()
@@ -308,14 +167,6 @@ def get_all_subscribers(media_id, conn):
 
 def get_medias(media_id, conn):
     c = conn.cursor()
-    c.execute(
-        '''CREATE TABLE IF NOT EXISTS SUBSCRIBERS(
-            media_id INTEGER,
-            user_name TEXT,
-            FOREIGN KEY (media_id) REFERENCES MEDIAS(media_id),
-            FOREIGN KEY (user_name) REFERENCES USERS(user_name),
-            PRIMARY KEY (media_id, user_name)
-        )''')
     c.execute('''SELECT media_type, media_name FROM MEDIAS WHERE media_id = ?''', (media_id,))
     media = c.fetchall()
     conn.commit()
@@ -324,29 +175,13 @@ def get_medias(media_id, conn):
 def subscribe_to_media(user_name, media_id, conn):
     conn.execute('PRAGMA foreign_keys = ON;')
     c = conn.cursor()
-    c.execute(
-        '''CREATE TABLE IF NOT EXISTS SUBSCRIBERS(
-            media_id INTEGER,
-            user_name TEXT,
-            FOREIGN KEY (media_id) REFERENCES MEDIAS(media_id),
-            FOREIGN KEY (user_name) REFERENCES USERS(user_name),
-            PRIMARY KEY (media_id, user_name)
-        )''')
 
     c.execute("INSERT INTO SUBSCRIBERS VALUES(?, ?)", (media_id, user_name))
 
 def get_media_type(media_id, conn):
     conn.execute('PRAGMA foreign_keys = ON;')
     c = conn.cursor()
-    c.execute(
-        '''CREATE TABLE IF NOT EXISTS MEDIAS(
-            media_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            media_type TEXT,
-            media_name TEXT UNIQUE,
-            user_name TEXT,
-            FOREIGN KEY (user_name) REFERENCES USERS(user_name)
-        )'''
-    )
+
     c.execute("SELECT media_type from MEDIAS WHERE media_id = ? ", (media_id,))
 
     media_type = c.fetchall()[0][0]
@@ -356,15 +191,6 @@ def get_media_type(media_id, conn):
 def is_available(user_name, conn):
     conn.execute('PRAGMA foreign_keys = ON;')
     c = conn.cursor()
-    c.execute(
-        '''CREATE TABLE IF NOT EXISTS MEDIAS(
-            media_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            media_type TEXT,
-            media_name TEXT UNIQUE,
-            user_name TEXT,
-            FOREIGN KEY (user_name) REFERENCES USERS(user_name)
-        )'''
-    )
     c.execute("SELECT user_name FROM MEDIAS WHERE user_name = ?", (user_name,))
     user_name = c.fetchall()
     conn.commit()
@@ -373,14 +199,6 @@ def is_available(user_name, conn):
 def is_subscribed(user_name, media_id, conn):
     conn.execute('PRAGMA foreign_keys = ON;')
     c = conn.cursor()
-    c.execute(
-        '''CREATE TABLE IF NOT EXISTS SUBSCRIBERS(
-            media_id INTEGER,
-            user_name TEXT,
-            FOREIGN KEY (media_id) REFERENCES MEDIAS(media_id),
-            FOREIGN KEY (user_name) REFERENCES USERS(user_name),
-            PRIMARY KEY (media_id, user_name)
-        )''')
 
     c.execute("SELECT user_name, media_id FROM SUBSCRIBERS WHERE user_name = ? and media_id = ? ", (user_name, media_id))
     sub_data = c.fetchall()
@@ -390,15 +208,7 @@ def is_subscribed(user_name, media_id, conn):
 def is_media_available(media_cred, conn):
     conn.execute('PRAGMA foreign_keys = ON;')
     c = conn.cursor()
-    c.execute(
-        '''CREATE TABLE IF NOT EXISTS MEDIAS(
-            media_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            media_type TEXT,
-            media_name TEXT UNIQUE,
-            user_name TEXT,
-            FOREIGN KEY (user_name) REFERENCES USERS(user_name)
-        )'''
-    )
+
     if media_cred.isdigit():
         c.execute("SELECT media_id from MEDIAS WHERE media_id = ? ", (media_cred,))
     else:
@@ -408,3 +218,51 @@ def is_media_available(media_cred, conn):
     conn.commit()
 
     return result[0][0] if result else None
+
+def create_all_db_tables(conn):
+    c = conn.cursor()
+
+    # Media Table
+    c.execute(
+        '''CREATE TABLE IF NOT EXISTS MEDIAS(
+            media_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            media_type TEXT,
+            media_name TEXT UNIQUE,
+            user_name TEXT,
+            FOREIGN KEY (user_name) REFERENCES USERS(user_name)
+        )'''
+    )
+
+    # User Table
+    c.execute('''
+                CREATE TABLE IF NOT EXISTS USERS(
+                    user_name TEXT UNIQUE
+                )
+            ''')
+
+    # Reviews Table
+    c.execute(
+        '''CREATE TABLE IF NOT EXISTS REVIEWS(
+            user_name TEXT,
+            media_id INTEGER,
+            rating REAL,
+            comment TEXT,
+            FOREIGN KEY (media_id) REFERENCES MEDIAS(media_id)
+            FOREIGN KEY (user_name) REFERENCES USERS(user_name)
+        )'''
+    )
+
+    # Subscriber Table
+    c.execute(
+        '''CREATE TABLE IF NOT EXISTS SUBSCRIBERS(
+            media_id INTEGER,
+            user_name TEXT,
+            FOREIGN KEY (media_id) REFERENCES MEDIAS(media_id),
+            FOREIGN KEY (user_name) REFERENCES USERS(user_name),
+            PRIMARY KEY (media_id, user_name)
+        )'''
+    )
+
+
+
+    conn.commit()
