@@ -1,13 +1,12 @@
 import sqlite3
-
 from rich.console import  Console
 import asyncio
 import logging
 
-import db
+from src import db
 
 logging.basicConfig(
-    filename="notifications.log",
+    filename="../notifications.log",
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S"

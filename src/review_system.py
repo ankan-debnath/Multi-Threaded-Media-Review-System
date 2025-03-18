@@ -2,7 +2,6 @@ import os
 import  sqlite3
 import threading
 from threading import Thread
-
 import redis
 from rich.table import Table
 from rich.console import Console
@@ -11,9 +10,9 @@ import  json
 import asyncio
 
 from enum import Enum
-import db
-from observer import  Observer
-from redis_db import redis_client, is_redis_available
+from src import db
+from src.observer import  Observer
+from src.redis_db import redis_client, is_redis_available
 
 class MediaType(Enum):
     MOVIE = "movie"

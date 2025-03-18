@@ -1,7 +1,7 @@
 import argparse
 
-from Medias import MediaFactory
-from review_system import ReviewSystem
+from src.Medias import MediaFactory
+from src.review_system import ReviewSystem
 
 review_system = ReviewSystem()
 

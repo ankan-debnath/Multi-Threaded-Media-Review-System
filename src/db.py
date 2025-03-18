@@ -191,7 +191,7 @@ def get_media_type(media_id, conn):
 def is_available(user_name, conn):
     conn.execute('PRAGMA foreign_keys = ON;')
     c = conn.cursor()
-    c.execute("SELECT user_name FROM MEDIAS WHERE user_name = ?", (user_name,))
+    c.execute("SELECT user_name FROM USERS WHERE user_name = ?", (user_name,))
     user_name = c.fetchall()
     conn.commit()
     return user_name
