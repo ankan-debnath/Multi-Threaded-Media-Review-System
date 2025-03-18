@@ -3,7 +3,6 @@ import  sqlite3
 import threading
 from threading import Thread
 import redis
-from rich.table import Table
 from rich.console import Console
 from dotenv import  load_dotenv
 import  json
@@ -13,6 +12,7 @@ from enum import Enum
 from src import db
 from src.observer import  Observer
 from src.redis_db import redis_client, is_redis_available
+from src.printer import Printer
 
 class MediaType(Enum):
     MOVIE = "movie"
@@ -31,56 +31,12 @@ CACHE_EXPIRY = 1800     # cache is invalidated automatically after 30 minutes
 class ReviewSystem:
     def __init__(self):
         self.observer = Observer()
+        self.printer = Printer()
         try:
             with sqlite3.connect('media.db', check_same_thread=False) as conn:
                 db.create_all_db_tables(conn)
         except sqlite3.DatabaseError as err:
             console.print(f"[red]Error:[/red] Database error. Message : {err}")
-
-    def print_reviews(self, reviews, title):
-        table = Table(title=f"Title : {title}", title_style="bold cyan")
-        table.add_column("user_name", style="cyan", justify="center")
-        table.add_column("Rating", style="magenta")
-        table.add_column("Comment", style="magenta")
-        for user_name, rating, comment in reviews:
-            table.add_row(user_name, str(rating), comment)
-        console.print(table)
-
-    def print_media(self, media_data):
-        """Display media list with rich formatting."""
-        table = Table(title="Media List")
-        table.add_column("ID", style="cyan", justify="center")
-        table.add_column("Type", style="magenta")
-        table.add_column("Title", style="magenta")
-        for media_id, media_type, title, _ in media_data:
-            table.add_row(str(media_id), media_type, title)
-
-        console.print(table)
-
-    def print_top_medias(self, medias, category):
-        """Display media list with rich formatting."""
-        table = Table(title=f"Top Rated {category} List", title_style="bold cyan")
-        table.add_column("ID", style="cyan")
-        table.add_column("Name", style="cyan")
-        table.add_column("Media Type", style="magenta", justify="center")
-        table.add_column("Average Rating", style="magenta", justify="center")
-        for media_id, media_name, media_type, rating in medias:
-            table.add_row( str(media_id), media_name, media_type,str(rating))
-        console.print(table)
-
-    def print_recommendations(self, recommendations, user ,category=""):
-        table = Table(title=f"Recommendations For {user} {('Category : ' + category) if category else ''}", title_style="bold cyan")
-        table.add_column("ID", style="cyan")
-        table.add_column("Name", style="magenta")
-        table.add_column("Category", style="magenta", justify="center")
-        table.add_column("Average Rating", style="magenta", justify="center")
-        table.add_column("Recommendation Type", style="magenta")
-
-        for media_id, media_name, media_type, avg_rating, recommendation_type in recommendations:
-            table.add_row(str(media_id), media_name, media_type, str(avg_rating), recommendation_type)
-
-        console.print(table)
-
 
     def list_media(self):
         try:
@@ -100,7 +56,7 @@ class ReviewSystem:
                     if redis_available:
                         redis_client.setex(cache_key, CACHE_EXPIRY, json.dumps(media_data))         # caching the media_list
 
-            self.print_media(media_data)
+            self.printer.print_media(media_data)
 
         except sqlite3.DatabaseError as err:
             console.print(f"[red]Error:[/red] Database error. Message : {err}")
@@ -219,7 +175,7 @@ class ReviewSystem:
                     if redis_available:
                         redis_client.setex(cache_key, CACHE_EXPIRY, json.dumps(reviews))
 
-            self.print_reviews(reviews, title)
+            self.printer.print_reviews(reviews, title)
 
         except KeyError:
             console.print("[red]Error:[/red] Media Type must be movie, song or web_show")
@@ -247,7 +203,7 @@ class ReviewSystem:
                         redis_client.setex(cache_key, CACHE_EXPIRY, json.dumps(medias))
                     print("Top rated media from DB")
 
-            self.print_top_medias(medias, category)
+            self.printer.print_top_medias(medias, category)
         except KeyError:
             console.print("[red]Error:[/red] Category must be movie, song or web_show")
         except sqlite3.OperationalError as err:
@@ -283,7 +239,7 @@ class ReviewSystem:
                         final_recommendations += db.get_top_rated_media(c, conn)
 
                     final_recommendations = [(*r, "top rated") for r in final_recommendations ]
-                self.print_recommendations(final_recommendations, user_name, category)
+                self.printer.print_recommendations(final_recommendations, user_name, category)
 
         except KeyError:
             console.print("[red]Error:[/red] Media Type must be movie, song or web_show")

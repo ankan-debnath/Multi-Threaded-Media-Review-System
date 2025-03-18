@@ -1,6 +1,6 @@
 import argparse
 
-from src.Medias import MediaFactory
+from src.medias import MediaFactory
 from src.review_system import ReviewSystem
 
 review_system = ReviewSystem()
@@ -17,6 +17,7 @@ if __name__ == "__main__":
     parser.add_argument("--top-rated", nargs=1, metavar=("CATEGORY",),  help="Search top-rated movies with category")
     parser.add_argument("--recommend", nargs="+", metavar=("USER_ID", "CATEGORY"), help="Recommend media")
     parser.add_argument("--subscribe", nargs=2, metavar=("USER_NAME", "MEDIA_ID",), help="Subscribe to particular media")
+    parser.add_argument("--unsubscribe", nargs=2, metavar=("USER_NAME", "MEDIA_ID",), help="Unsubscribe to particular media")
     parser.add_argument("--user", nargs=2, metavar=("USER_NAME", "ADMIN_PASSWORD",), help="Create User")
 
     parser.add_argument("--multiple-review", nargs=1, metavar=("REVIEWS",),
