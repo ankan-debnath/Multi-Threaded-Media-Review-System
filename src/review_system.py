@@ -10,9 +10,10 @@ import asyncio
 
 from enum import Enum
 from src import db
-from src.observer import  Observer
+from src.Observer import  Observer
 from src.redis_db import redis_client, is_redis_available
 from src.printer import Printer
+from src.User import User
 
 class MediaType(Enum):
     MOVIE = "movie"
@@ -30,7 +31,6 @@ CACHE_EXPIRY = 1800     # cache is invalidated automatically after 30 minutes
 
 class ReviewSystem:
     def __init__(self):
-        self.observer = Observer()
         self.printer = Printer()
         try:
             with sqlite3.connect('media.db', check_same_thread=False) as conn:
@@ -66,8 +66,6 @@ class ReviewSystem:
     def submit_review(self, user_name, media_cred, rating, comment):
         """Submit a review with styled output."""
         try:
-            media_id = int(media_cred) if media_cred.isdigit() else None
-            media_name = media_cred.lower() if not media_cred.isdigit() else None
             rating = float(rating)
 
             with lock:
@@ -76,12 +74,23 @@ class ReviewSystem:
                         console.print("[red]Error:[/red] Rating must be between 1 and 5.")
                         return
 
-                    if media_id:
-                        db.add_review_with_media_id(user_name, media_id, rating, comment, conn)
-                    if media_name:
-                        media_id = db.add_review_with_media_name(user_name, media_name, rating, comment, conn)
+                    media_id = db.is_media_available(media_cred, conn)
 
-                    media_type = db.get_media_type(media_id, conn)
+                    if not db.is_available(user_name, conn):
+                        raise sqlite3.IntegrityError("user_name not found")
+                    if not media_id:
+                        raise sqlite3.IntegrityError("media not found")
+
+                    media = db.get_medias(media_id, conn)
+                    media_type, media_name = media[0]
+
+                    subscribers = db.get_all_subscribers(media_id, conn)
+                    observers = [ Observer(cur_user) for cur_user,  in subscribers if cur_user != user_name]
+
+                    user = User(user_name, observers)
+                    user.add_review(media_id, rating, comment, conn)
+                    console.print(f"[green]Review added by \nUser : {user_name}\nMedia : {media_id}, Rating : {rating},\nComment : {comment}[/green]",
+                        style='cyan')
 
                 # cache invalidation operations
                 if media_id and redis_available and redis_client.get(media_id):
@@ -92,12 +101,13 @@ class ReviewSystem:
                 if redis_available and redis_client.get(f"top_rated_{media_type}"):
                     redis_client.delete(f"top_rated_{media_type}")
 
-            asyncio.run(self.observer.notify(media_id, rating, comment, conn))  # send notification to users asynchronously
+            # send notification to users asynchronously
+            asyncio.run(user.notify_observers(media_name, media_type, rating, comment))
 
         except ValueError:
             console.print("[red]Error:[/red] Media ID must integer and Rating must be decimal value.")
-        except sqlite3.IntegrityError:
-            console.print(f"[red]Error:[/red] media_id or user_name is invalid ", )
+        except sqlite3.IntegrityError as err:
+            console.print(f"[red]Error:[/red] message : ", err )
         except sqlite3.OperationalError as err:
             console.print(f"[red]Error:[/red] Database error : {err}")
         except redis.exceptions.RedisError as err:
@@ -140,14 +150,17 @@ class ReviewSystem:
             with sqlite3.connect('media.db', check_same_thread=False) as conn:
                 media_id = db.is_media_available(media_cred, conn)
 
-                if not db.is_available(user_name, conn):
-                    raise sqlite3.IntegrityError("user_name does not exist!")
                 if not media_id:
                     raise sqlite3.IntegrityError("media not available!")
+                if not db.is_available(user_name, conn):
+                    raise sqlite3.IntegrityError("user_name does not exist!")
                 if db.is_subscribed(user_name, media_id, conn):
                     raise sqlite3.IntegrityError("user already subscribed!")
 
-                self.observer.subscribe(user_name, int(media_id), conn)
+                user = User(user_name)
+                user.subscribe(media_id, conn)
+                # self.observer.subscribe(user_name, int(media_id), conn)
+                console.print(f"[green]User : {user_name}, added as a subscriber to media_id : {media_id}[/green]", style='cyan')
 
         except ValueError as err:
             console.print(f"[red]Error:[/red] Failed to subscribe, media_id must be integer \nMessage : {err}")
@@ -155,6 +168,31 @@ class ReviewSystem:
             console.print(f"[red]Error:[/red] Failed to subscribe. Message : {err}", )
         except sqlite3.OperationalError as err:
             console.print(f"[red]Error:[/red] Failed to subscribe. Message : {err}")
+
+    def unsubscribe_to_media(self, user_name, media_cred):
+        try:
+            with sqlite3.connect('media.db', check_same_thread=False) as conn:
+                media_id = db.is_media_available(media_cred, conn)
+
+                if not media_id:
+                    raise sqlite3.IntegrityError("media not available!")
+                if not db.is_available(user_name, conn):
+                    raise sqlite3.IntegrityError("user_name does not exist!")
+                if not db.is_subscribed(user_name, media_id, conn):
+                    raise sqlite3.IntegrityError(f"{user_name} is not subscribed to {media_cred}")
+
+                user = User(user_name)
+                user.unsubscribe(media_id, conn, lock)
+                console.print(f"[green]User : {user_name}, unsubscribed from media_id : {media_id}[/green]", style='cyan')
+
+
+        except ValueError as err:
+            console.print(f"[red]Error:[/red] Failed to subscribe, media_id must be integer \nMessage : {err}")
+        except sqlite3.IntegrityError as err:
+            console.print(f"[red]Error:[/red] Failed to subscribe. Message : {err}", )
+        except sqlite3.OperationalError as err:
+            console.print(f"[red]Error:[/red] Failed to subscribe. Message : {err}")
+
 
     def search(self, title):
         try:

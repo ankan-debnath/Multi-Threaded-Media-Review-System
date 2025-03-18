@@ -15,7 +15,6 @@ def add_review_with_media_id(user_name, media_id, rating, comment, conn):
     c = conn.cursor()
     c.execute('''INSERT INTO REVIEWS VALUES(?, ?, ?, ?)''', (user_name, media_id, rating, comment))
     conn.commit()
-    console.print(f"[green]Review added by \nUser : {user_name}\nMedia : {media_id}, Rating : {rating},\nComment : {comment}[/green]", style='cyan')
 
 def add_review_with_media_name(user_name, media_name, rating, comment, conn):
     conn.execute('PRAGMA foreign_keys = ON;')
@@ -177,6 +176,12 @@ def subscribe_to_media(user_name, media_id, conn):
     c = conn.cursor()
 
     c.execute("INSERT INTO SUBSCRIBERS VALUES(?, ?)", (media_id, user_name))
+
+def unsubscribe(user_name, media_id, conn, lock):
+    c = conn.cursor()
+    with lock:
+        c.execute("DELETE FROM SUBSCRIBERS WHERE user_name = ? AND media_id = ?", (user_name, media_id))
+        conn.commit()
 
 def get_media_type(media_id, conn):
     conn.execute('PRAGMA foreign_keys = ON;')

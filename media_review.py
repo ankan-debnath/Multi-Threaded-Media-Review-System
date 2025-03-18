@@ -38,6 +38,12 @@ if __name__ == "__main__":
     elif args.subscribe:
         user_name, media_id = args.subscribe
         review_system.subscribe_to_media(user_name, media_id)
+
+
+    elif args.unsubscribe:
+        user_name, media_id = args.unsubscribe
+        review_system.unsubscribe_to_media(user_name, media_id)
+
     elif args.add_media:
         media = MediaFactory.create_media(*args.add_media)
         review_system.add_media(media)
