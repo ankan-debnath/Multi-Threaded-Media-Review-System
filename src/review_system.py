@@ -60,10 +60,12 @@ class ReviewSystem:
     def print_top_medias(self, medias, category):
         """Display media list with rich formatting."""
         table = Table(title=f"Top Rated {category} List", title_style="bold cyan")
+        table.add_column("ID", style="cyan")
         table.add_column("Name", style="cyan")
+        table.add_column("Media Type", style="magenta", justify="center")
         table.add_column("Average Rating", style="magenta", justify="center")
-        for media_name, rating in medias:
-            table.add_row(media_name,str(rating))
+        for media_id, media_name, media_type, rating in medias:
+            table.add_row( str(media_id), media_name, media_type,str(rating))
         console.print(table)
 
     def print_recommendations(self, recommendations, user ,category=""):
@@ -246,7 +248,6 @@ class ReviewSystem:
                     print("Top rated media from DB")
 
             self.print_top_medias(medias, category)
-
         except KeyError:
             console.print("[red]Error:[/red] Category must be movie, song or web_show")
         except sqlite3.OperationalError as err:
@@ -262,7 +263,9 @@ class ReviewSystem:
                 if not db.is_available(user_name, conn):
                     raise sqlite3.IntegrityError("user_name does not exist!")
 
+                # recommendation based on review
                 recommendations = db.get_recommendations_from_review_data(user_name, media_type, conn)
+                # recommendations based on subscription data
                 recommendations += db.get_recommendations_from_subscriber_data(user_name, media_type, conn)
 
                 # Filtering the duplicate recommendations
@@ -274,6 +277,12 @@ class ReviewSystem:
                         final_recommendations.append(media)
                         seen.add(media_id)
 
+                # recommending top rated medias if data not available
+                if not final_recommendations:
+                    for c in ((category,) if category else ("movie", "song", "web_show")):
+                        final_recommendations += db.get_top_rated_media(c, conn)
+
+                    final_recommendations = [(*r, "top rated") for r in final_recommendations ]
                 self.print_recommendations(final_recommendations, user_name, category)
 
         except KeyError:

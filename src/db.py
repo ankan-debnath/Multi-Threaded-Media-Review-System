@@ -140,7 +140,7 @@ def get_top_rated_media(category, conn):
     conn.execute('PRAGMA foreign_keys = ON;')
     c = conn.cursor()
     c.execute('''
-                SELECT M.media_name, ROUND(AVG(R.rating), 2) as avg_rating
+                SELECT M.media_id, M.media_name, M.media_type, ROUND(AVG(R.rating), 2) as avg_rating
                 FROM MEDIAS AS M JOIN REVIEWS AS R
                 ON M.media_id = R.media_id
                 WHERE M.media_type = ?
