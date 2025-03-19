@@ -4,7 +4,7 @@ from src.medias import MediaFactory
 from src.printer import Printer
 from src.review_system import ReviewSystem
 
-review_system = ReviewSystem()
+review_system = ReviewSystem("media.db")
 printer = Printer()
 
 if __name__ == "__main__":
@@ -65,11 +65,16 @@ if __name__ == "__main__":
 
     elif args.review:
             user_name, media_cred, rating, comment = args.review
-            review_system.submit_review(user_name, media_cred, rating, comment)
+            message = review_system.submit_review(user_name, media_cred, rating, comment)
+            printer.print_message(message)
     elif args.multiple_review:
         reviews, = args.multiple_review
-        review_system.submit_multiple_reviews(reviews)
-
+        results = review_system.submit_multiple_reviews(reviews)
+        if isinstance(results, list):
+            for result in results:
+                printer.print_message(result)
+        else:
+            printer.print_message(results)
     elif args.search:
         title = args.search[0]
         reviews = review_system.search(title)

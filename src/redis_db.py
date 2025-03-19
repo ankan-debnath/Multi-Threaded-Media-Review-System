@@ -1,7 +1,10 @@
 import redis
 from rich.console import  Console
 console = Console()
-redis_client = redis.StrictRedis(host="localhost", port="6379", db=0, decode_responses=True)
+
+def get_redis_client():
+    redis_client = redis.StrictRedis(host="localhost", port="6379", db=0, decode_responses=True)
+    return redis_client
 
 def is_redis_available(client):
     try:

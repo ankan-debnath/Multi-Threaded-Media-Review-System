@@ -237,6 +237,15 @@ def is_media_available(media_cred, conn, lock):
 
     return result[0][0] if result else None
 
+def get_media_name(media_id, conn, lock):
+    with lock:
+        c = conn.cursor()
+        c.execute("SELECT media_name from MEDIAS WHERE media_id = ?", (media_id,))
+        c.commit()
+    result = c.fetchall()
+    return result[0][0] if result else None
+
+
 def create_all_db_tables(conn, lock):
     with lock:
         c = conn.cursor()

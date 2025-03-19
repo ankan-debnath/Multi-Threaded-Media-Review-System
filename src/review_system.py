@@ -1,6 +1,7 @@
 import os
 import  sqlite3
 import threading
+from concurrent.futures.thread import ThreadPoolExecutor
 from threading import Thread
 import redis
 from rich.console import Console
@@ -11,7 +12,7 @@ import asyncio
 from enum import Enum
 from src import db
 from src.Observer import  Observer
-from src.redis_db import redis_client, is_redis_available
+from src.redis_db import get_redis_client, is_redis_available
 from src.printer import Printer
 from src.User import User
 
@@ -23,17 +24,21 @@ class MediaType(Enum):
 console = Console()
 load_dotenv()
 
-redis_available = is_redis_available(redis_client)
 
 lock = threading.Lock()
 
 CACHE_EXPIRY = 1800     # cache is invalidated automatically after 30 minutes
 
 class ReviewSystem:
-    def __init__(self):
+    def __init__(self, test_file):
         self.printer = Printer()
+        self.db_file = test_file
+        self.redis_client = get_redis_client()
+        self.redis_available = is_redis_available(self.redis_client)
+
+
         try:
-            with sqlite3.connect('media.db', check_same_thread=False) as conn:
+            with sqlite3.connect(self.db_file, check_same_thread=False) as conn:
                 db.create_all_db_tables(conn, lock)
         except sqlite3.DatabaseError as err:
             console.print(f"[red]Error:[/red] Database error. Message : {err}")
@@ -43,18 +48,18 @@ class ReviewSystem:
             cache_key = "media_list"
             cached_data = None
 
-            if redis_available:
-                cached_data = redis_client.get(cache_key)
+            if self.redis_available:
+                cached_data = self.redis_client.get(cache_key)
 
             if cached_data:
                 print("Data from cache")
                 media_data = json.loads(cached_data)
             else:
                 print("Data from DB")
-                with sqlite3.connect('media.db', check_same_thread=False) as conn:
+                with sqlite3.connect(self.db_file, check_same_thread=False) as conn:
                     media_data = db.get_all_media(conn, lock)
-                    if redis_available:
-                        redis_client.setex(cache_key, CACHE_EXPIRY, json.dumps(media_data))         # caching the media_list
+                    if self.redis_available:
+                        self.redis_client.setex(cache_key, CACHE_EXPIRY, json.dumps(media_data))         # caching the media_list
 
             return media_data
 
@@ -68,9 +73,9 @@ class ReviewSystem:
         try:
             rating = float(rating)
             if not (1 <= rating <= 5):
-                raise ValueError("[red]Error:[/red] Rating must be between 1 and 5.")
+                raise ValueError("Rating must be between 1 and 5.")
 
-            with sqlite3.connect('media.db') as conn:
+            with sqlite3.connect(self.db_file) as conn:
 
                 media_id = db.is_media_available(media_cred, conn, lock)
 
@@ -81,6 +86,7 @@ class ReviewSystem:
 
                 media = db.get_medias(media_id, conn, lock)
                 media_type, media_name = media[0]
+                media_name = media_name.lower()
 
                 subscribers = db.get_all_subscribers(media_id, conn, lock)
                 observers = [ Observer(cur_user) for cur_user,  in subscribers if cur_user != user_name]
@@ -89,20 +95,20 @@ class ReviewSystem:
                 user.add_review(media_id, rating, comment, conn, lock)
 
                 # cache invalidation operations
-                if media_id and redis_available and redis_client.get(media_id):
-                    redis_client.delete(media_id)
-                if media_name and redis_available and redis_client.get(media_name):
-                    redis_client.delete(media_name)
+                if self.redis_available and self.redis_client.get(media_id):
+                    self.redis_client.delete(media_id)
+                if self.redis_available and self.redis_client.get(media_name):
+                    self.redis_client.delete(media_name)
 
-                if redis_available and redis_client.get(f"top_rated_{media_type}"):
-                    redis_client.delete(f"top_rated_{media_type}")
+                if self.redis_available and self.redis_client.get(f"top_rated_{media_type}"):
+                    self.redis_client.delete(f"top_rated_{media_type}")
 
             # send notification to users asynchronously
             asyncio.run(user.notify_observers(media_name, media_type, rating, comment))
-            return f"[green]Review added by \nUser : {user_name}\nMedia : {media_id}, Rating : {rating},\nComment : {comment}[/green]"
+            return f"[green]Review added by \nUser : {user_name}\nMedia : {media_cred}, Rating : {rating},\nComment : {comment}[/green]"
 
-        except ValueError:
-            return "[red]Error:[/red] Media ID must integer and Rating must be decimal value."
+        except ValueError as err:
+            return f"[red]Error:[/red] : {err}"
         except sqlite3.IntegrityError as err:
             return f"[red]Error:[/red] message : {err}"
         except sqlite3.OperationalError as err:
@@ -114,7 +120,7 @@ class ReviewSystem:
         if password != os.getenv("admin_password"):
             return "[red]Error:[/red] Wrong Password"
         try:
-            with sqlite3.connect('media.db', check_same_thread=False) as conn:
+            with sqlite3.connect(self.db_file, check_same_thread=False) as conn:
                 db.create_user(user_name, conn, lock)
             return f"[green]User created with user_name : {user_name}[/green]"
 
@@ -126,7 +132,7 @@ class ReviewSystem:
     def add_media(self, media):
         try:
             user_name, media_type, media_name = media.get_user_name(), media.get_media_type(), media.get_name()
-            with sqlite3.connect('media.db', check_same_thread=False) as conn:
+            with sqlite3.connect(self.db_file, check_same_thread=False) as conn:
                 if not db.is_available(user_name, conn, lock):
                     raise sqlite3.IntegrityError("User does not exist")
                 if db.is_media_available(media_name, conn, lock):
@@ -135,8 +141,8 @@ class ReviewSystem:
 
                 db.add_media(user_name, media_type, media_name, conn, lock)
 
-                if redis_available:
-                    redis_client.delete("media_list")                       #invalidating the cache
+                if self.redis_available:
+                    self.redis_client.delete("media_list")                       #invalidating the cache
 
             return f"[green]Media added \nType : {media_type}, \nName : {media_name}[/green]"
 
@@ -151,7 +157,7 @@ class ReviewSystem:
 
     def subscribe_to_media(self, user_name, media_cred):
         try:
-            with sqlite3.connect('media.db', check_same_thread=False) as conn:
+            with sqlite3.connect(self.db_file, check_same_thread=False) as conn:
                 media_id = db.is_media_available(media_cred, conn, lock)
 
                 if not media_id:
@@ -175,7 +181,7 @@ class ReviewSystem:
 
     def unsubscribe_to_media(self, user_name, media_cred):
         try:
-            with sqlite3.connect('media.db', check_same_thread=False) as conn:
+            with sqlite3.connect(self.db_file, check_same_thread=False) as conn:
                 media_id = db.is_media_available(media_cred, conn, lock)
 
                 if not media_id:
@@ -191,11 +197,11 @@ class ReviewSystem:
 
 
         except ValueError as err:
-            return f"[red]Error:[/red] Failed to subscribe, media_id must be integer \nMessage : {err}"
+            return f"[red]Error:[/red] Failed to unsubscribe, media_id must be integer \nMessage : {err}"
         except sqlite3.IntegrityError as err:
-            return f"[red]Error:[/red] Failed to subscribe. Message : {err}"
+            return f"[red]Error:[/red] Failed to unsubscribe. Message : {err}"
         except sqlite3.OperationalError as err:
-            return f"[red]Error:[/red] Failed to subscribe. Message : {err}"
+            return f"[red]Error:[/red] Failed to unsubscribe. Message : {err}"
 
 
     def search(self, title):
@@ -204,23 +210,23 @@ class ReviewSystem:
             cached_data = None
             reviews = []
 
-            if redis_available:
-                cached_data = redis_client.get(cache_key)
+            if self.redis_available:
+                cached_data = self.redis_client.get(cache_key)
 
             if cached_data:
                 reviews = json.loads(cached_data)
                 print("Reviews from cache")
 
             else:
-                with sqlite3.connect('media.db', check_same_thread=False) as conn:
+                with sqlite3.connect(self.db_file, check_same_thread=False) as conn:
                     print("Reviews from DB")
                     media_id = db.is_media_available(title, conn, lock)
                     if not media_id:
                         raise sqlite3.IntegrityError("Media not found")
 
                     reviews = db.get_reviews_by_title(title, conn, lock)
-                    if redis_available:
-                        redis_client.setex(cache_key, CACHE_EXPIRY, json.dumps(reviews))
+                    if self.redis_available:
+                        self.redis_client.setex(cache_key, CACHE_EXPIRY, json.dumps(reviews))
 
             return reviews, title
 
@@ -239,17 +245,17 @@ class ReviewSystem:
             cached_data = None
 
             cache_key = f"top_rated_{category}"
-            if redis_available:
-                cached_data = redis_client.get(cache_key)
+            if self.redis_available:
+                cached_data = self.redis_client.get(cache_key)
 
             if cached_data:
                 medias = json.loads(cached_data)
                 print("Top rated media from cache")
             else:
-                with sqlite3.connect('media.db', check_same_thread=False) as conn:
+                with sqlite3.connect(self.db_file, check_same_thread=False) as conn:
                     medias = db.get_top_rated_media(category, conn, lock)
-                    if redis_available:
-                        redis_client.setex(cache_key, CACHE_EXPIRY, json.dumps(medias))
+                    if self.redis_available:
+                        self.redis_client.setex(cache_key, CACHE_EXPIRY, json.dumps(medias))
                     print("Top rated media from DB")
 
             return medias, category
@@ -262,7 +268,7 @@ class ReviewSystem:
 
     def get_recommendation_with_category(self, user_name, category=""):
         try:
-            with sqlite3.connect('media.db', check_same_thread=False) as conn:
+            with sqlite3.connect(self.db_file, check_same_thread=False) as conn:
                 media_type = MediaType[category.upper()].value if category else category
 
                 if not db.is_available(user_name, conn, lock):
@@ -315,17 +321,29 @@ class ReviewSystem:
 
             # print(final_reviews)
 
-            review_threads = []
+            # review_threads = []
 
-            for review in final_reviews:
-                user_name, media_cred, rating, comment = review
-                thread = Thread(target=self.submit_review, args=(user_name, media_cred, rating, comment))
-                review_threads.append(thread)
-                thread.start()
+            user_names = [review[0] for review in final_reviews]
+            media_creds = [review[1] for review in final_reviews]
+            ratings = [review[2] for review in final_reviews]
+            comments = [review[3] for review in final_reviews]
 
-            for thread in review_threads:
-                thread.join()
+            with ThreadPoolExecutor() as executor:
+                result = list(executor.map(self.submit_review, user_names, media_creds, ratings, comments))
 
+            return result
+
+            # for review in final_reviews:
+            #     user_name, media_cred, rating, comment = review
+            #     thread = Thread(target=self.submit_review, args=(user_name, media_cred, rating, comment))
+            #     review_threads.append(thread)
+            #     thread.start()
+
+            # for thread in review_threads:
+            #     thread.join()
+
+        except ValueError:
+            return f"[red]Error:[/red] Message : Problem in reviews syntax"
         except KeyError:
             console.print("[red]Error:[/red] Media Type must be movie, song or web_show")
         except InterruptedError as err:
