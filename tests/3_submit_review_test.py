@@ -13,11 +13,11 @@ def test_invalid_rating(review_system):
 
     media_cred, rating, comment = "5", -1, "some comment"
     result = review_system.submit_review(user_name, media_cred, rating, comment )
-    assert result == "[red]Error:[/red] Media ID must integer and Rating must be decimal value."
+    assert result == "[red]Error:[/red] : Rating must be between 1 and 5."
 
     media_cred, rating, comment = "5", 10, "some comment"
     result = review_system.submit_review(user_name, media_cred, rating, comment)
-    assert result == "[red]Error:[/red] Media ID must integer and Rating must be decimal value."
+    assert result == "[red]Error:[/red] : Rating must be between 1 and 5."
 
 def test_invalid_media_credential(review_system):
     user_name = "test_user"
