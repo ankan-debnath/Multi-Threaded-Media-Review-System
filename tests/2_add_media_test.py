@@ -20,7 +20,7 @@ def test_media_type(review_system):
 @pytest.mark.parametrize(
     "user_name, media_type, media_name",
     [
-        ("test_user", "movie", "Demo1"),
+        ("test_user", "movie", "demo1"),
         ("test_user", "song", "demo2"),
         ("test_user", "web_show", "demo3"),
     ],
