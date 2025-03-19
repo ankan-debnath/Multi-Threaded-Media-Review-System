@@ -23,7 +23,7 @@ def test_invalid_media_credential(review_system):
 )
 def test_subscribe(review_system, user_name, media_cred):
     result = review_system.subscribe_to_media(user_name, media_cred)
-    assert result == f"[green]User : {user_name}, added as a subscriber to media_id : {media_cred}[/green]"
+    assert result == f"[green]User : {user_name}, added as a subscriber to media : {media_cred}[/green]"
 
 @pytest.mark.parametrize(
     "user_name, media_cred",

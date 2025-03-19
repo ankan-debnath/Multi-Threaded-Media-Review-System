@@ -169,8 +169,7 @@ class ReviewSystem:
 
                 user = User(user_name)
                 user.subscribe(media_id, conn, lock)
-                # self.observer.subscribe(user_name, int(media_id), conn)
-                return f"[green]User : {user_name}, added as a subscriber to media_id : {media_cred}[/green]"
+                return f"[green]User : {user_name}, added as a subscriber to media : {media_cred}[/green]"
 
         except ValueError as err:
             return f"[red]Error:[/red] Failed to subscribe, media_id must be integer \nMessage : {err}"
@@ -193,7 +192,7 @@ class ReviewSystem:
 
                 user = User(user_name)
                 user.unsubscribe(media_id, conn, lock)
-                return f"[green]User : {user_name}, unsubscribed from media_id : {media_id}[/green]"
+                return f"[green]User : {user_name}, unsubscribed from media : {media_cred}[/green]"
 
 
         except ValueError as err:
