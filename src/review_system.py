@@ -69,7 +69,6 @@ class ReviewSystem:
             return f"[red]Error:[/red] Redis Cache error. Message : {err}"
 
     def submit_review(self, user_name, media_cred, rating, comment):
-        """Submit a review with styled output."""
         try:
             rating = float(rating)
             if not (1 <= rating <= 5):
