@@ -7,8 +7,8 @@ class User:
         self.observer_list = observer_list
         self.user_name = user_name
 
-    def subscribe(self, media_id, conn):
-        db.subscribe_to_media(self.user_name, media_id, conn)
+    def subscribe(self, media_id, conn, lock):
+        db.subscribe_to_media(self.user_name, media_id, conn, lock)
 
     def unsubscribe(self, media_id, conn, lock):
         db.unsubscribe(self.user_name, media_id, conn, lock)
@@ -19,5 +19,5 @@ class User:
             for observer in self.observer_list:
                 tg.create_task(observer.update(media_name, media_type, rating, comment))
 
-    def add_review(self, media_id, rating, comment, conn):
-        db.add_review_with_media_id(self.user_name, media_id, rating, comment, conn)
+    def add_review(self, media_id, rating, comment, conn, lock):
+        db.add_review_with_media_id(self.user_name, media_id, rating, comment, conn, lock)

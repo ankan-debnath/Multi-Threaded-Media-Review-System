@@ -47,3 +47,6 @@ class Printer:
             table.add_row(str(media_id), media_name, media_type, str(avg_rating), recommendation_type)
 
         self.console.print(table)
+
+    def print_message(self, message):
+        self.console.print(message, style='cyan')
