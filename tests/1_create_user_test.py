@@ -17,7 +17,6 @@ def test_create_user(review_system):
     assert result == f"[green]User created with user_name : {user_name}[/green]"
 
 def test_existing_user(review_system):
-    print(review_system)
     user_name = "test_user"
     password = os.getenv("admin_password")
     result = review_system.create_user(user_name, password)
