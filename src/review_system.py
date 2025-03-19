@@ -67,11 +67,10 @@ class ReviewSystem:
         """Submit a review with styled output."""
         try:
             rating = float(rating)
+            if not (1 <= rating <= 5):
+                raise ValueError("[red]Error:[/red] Rating must be between 1 and 5.")
 
             with sqlite3.connect('media.db') as conn:
-                if not (1 <= rating <= 5):
-                    console.print("[red]Error:[/red] Rating must be between 1 and 5.")
-                    return
 
                 media_id = db.is_media_available(media_cred, conn, lock)
 
@@ -88,8 +87,6 @@ class ReviewSystem:
 
                 user = User(user_name, observers)
                 user.add_review(media_id, rating, comment, conn, lock)
-                console.print(f"[green]Review added by \nUser : {user_name}\nMedia : {media_id}, Rating : {rating},\nComment : {comment}[/green]",
-                    style='cyan')
 
                 # cache invalidation operations
                 if media_id and redis_available and redis_client.get(media_id):
@@ -102,15 +99,16 @@ class ReviewSystem:
 
             # send notification to users asynchronously
             asyncio.run(user.notify_observers(media_name, media_type, rating, comment))
+            return f"[green]Review added by \nUser : {user_name}\nMedia : {media_id}, Rating : {rating},\nComment : {comment}[/green]"
 
         except ValueError:
-            console.print("[red]Error:[/red] Media ID must integer and Rating must be decimal value.")
+            return "[red]Error:[/red] Media ID must integer and Rating must be decimal value."
         except sqlite3.IntegrityError as err:
-            console.print(f"[red]Error:[/red] message : ", err )
+            return f"[red]Error:[/red] message : {err}"
         except sqlite3.OperationalError as err:
-            console.print(f"[red]Error:[/red] Database error : {err}")
+            return f"[red]Error:[/red] Database error : {err}"
         except redis.exceptions.RedisError as err:
-            console.print(f"[red]Error:[/red] Redis Cache error. Message : {err}")
+            return f"[red]Error:[/red] Redis Cache error. Message : {err}"
 
     def create_user(self, user_name, password):
         if password != os.getenv("admin_password"):
