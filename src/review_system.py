@@ -326,7 +326,7 @@ class ReviewSystem:
             ratings = [review[2] for review in final_reviews]
             comments = [review[3] for review in final_reviews]
 
-            with ThreadPoolExecutor() as executor:
+            with ThreadPoolExecutor(max_workers=10) as executor:
                 result = list(executor.map(self.submit_review, user_names, media_creds, ratings, comments))
 
             return result
