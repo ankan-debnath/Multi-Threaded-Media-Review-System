@@ -5,9 +5,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def test_wrong_password(review_system):
-        user_name = "test_user"
-        result = review_system.create_user(user_name, "wrong_password")
-        assert result == "[red]Error:[/red] Wrong Password"
+    user_name = "test_user"
+    result = review_system.create_user(user_name, "wrong_password")
+    assert result == "[red]Error:[/red] Wrong Password"
 
 
 def test_create_user(review_system):
