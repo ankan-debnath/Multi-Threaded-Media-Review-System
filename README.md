@@ -12,7 +12,6 @@ The Media Review System is a CLI-based application that allows users to review a
 ## Installation
 1. Clone the repository:
    ```sh
-   git clone https://git.epam.com/ankan_debnath/media-review-system.git
    cd media-review-system
    ```
 2. Install dependencies:
